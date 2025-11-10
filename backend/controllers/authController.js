@@ -92,12 +92,16 @@ export const login = async (req, res) => {
       $or: [{ username: loginField }, { email: loginField }],
     });
 
+    console.log("[LOGIN DEBUG] User found:", user ? user.username : "none", "Dept:", user?.department);
+
     if (!user) return res.status(404).json({ message: "User not found" });
     if (!user.isVerified) return res.status(400).json({ message: "Please verify your email first." });
     if (user.isApproved !== "accepted") return res.status(403).json({ message: "Account pending admin approval." });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid password" });
+
+    console.log("[LOGIN DEBUG] User department:", user.department);
 
     const token = jwt.sign(
   {
@@ -116,6 +120,7 @@ export const login = async (req, res) => {
     res.status(200).json({
       message: "Login successful",
       user: { id: user._id, username: user.username, email: user.email, role: user.role },
+      token
     });
   } catch (error) {
     console.error("Login error:", error);

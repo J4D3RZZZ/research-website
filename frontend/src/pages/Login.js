@@ -9,30 +9,35 @@ export default function Login({ setUser }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
+      const response = await axios.post("http://localhost:5000/api/auth/login", {
         loginField,
         password,
       });
 
-      // Save user in App.js state
-      setUser(res.data.user);
+      // Save token in localStorage
+      localStorage.setItem("token", response.data.token);
+      setUser(response.data.user);
 
-      // Optionally, save token/user to localStorage
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
+      alert("Login successful!");
 
-      // Navigate based on role
-      navigate(res.data.user.role === "student" ? "/student" : "/teacher");
+      // Redirect based on role
+      if (response.data.user.role === "teacher") {
+        navigate("/teacher");
+      } else if (response.data.user.role === "student") {
+        navigate("/student");
+      } else if (response.data.user.isAdmin) {
+        navigate("/admin");
+      }
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Login failed");
+      alert(err.response?.data?.message || "Login failed!");
     }
   };
 
   return (
-    <form onSubmit={handleLogin}>
+    <form onSubmit={handleLogin} style={{ maxWidth: 400, margin: "50px auto", display: "flex", flexDirection: "column", gap: "10px" }}>
       <input
         type="text"
         placeholder="Username or Email"

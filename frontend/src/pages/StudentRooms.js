@@ -5,34 +5,32 @@ export default function StudentRooms({ user }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const token = localStorage.getItem("token");
+useEffect(() => {
+  const fetchRooms = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("No token found in localStorage");
+      setLoading(false);
+      return;
+    }
 
-        if (!token) {
-          console.error("No token found!");
-          setLoading(false);
-          return;
-        }
+    try {
+      const res = await axios.get("http://localhost:5000/api/rooms", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        const res = await axios.get("http://localhost:5000/api/rooms", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      const deptRooms = res.data.filter((room) => room.department === user.department);
+      setRooms(deptRooms);
+    } catch (err) {
+      console.error("Error fetching rooms:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // Filter rooms by student's department
-        const deptRooms = res.data.filter((room) => room.department === user.department);
+  fetchRooms();
+}, [user.department]);
 
-        setRooms(deptRooms);
-      } catch (err) {
-        console.error("Error fetching rooms:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRooms();
-  }, [user.department]);
 
   if (loading) return <div>Loading rooms...</div>;
 
@@ -59,7 +57,8 @@ export default function StudentRooms({ user }) {
               ) : (
                 room.bookings.map((b, i) => (
                   <li key={i}>
-                    Occupied by Prof. {b.teacher} | {new Date(b.startTime).toLocaleTimeString()} -{" "}
+                    Occupied by Prof. {b.teacher} |{" "}
+                    {new Date(b.startTime).toLocaleTimeString()} -{" "}
                     {new Date(b.endTime).toLocaleTimeString()} | {b.section}
                   </li>
                 ))

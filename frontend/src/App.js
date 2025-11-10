@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import axios from "axios";
+
 import StudentRooms from "./pages/StudentRooms";
 import TeacherRooms from "./pages/TeacherRooms";
+import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ConfirmCode from "./pages/ConfirmCode";
 import Unauthorized from "./pages/Unauthorized";
-import Login from "./pages/Login";
-import axios from "axios";
-import AdminDashboard from "./pages/AdminDashboard";
 import Landing from "./pages/Landing";
 
 function App() {
@@ -16,7 +16,6 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
-
     if (token && userData) {
       setUser(JSON.parse(userData));
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -28,6 +27,7 @@ function App() {
     localStorage.removeItem("user");
     delete axios.defaults.headers.common["Authorization"];
     setUser(null);
+    window.location.href = "/login"; // redirect to login
   };
 
   return (
@@ -73,9 +73,9 @@ function App() {
           }
         />
         <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/confirm/:userId" element={<ConfirmCode />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/" element={<Landing />} />
       </Routes>
     </BrowserRouter>

@@ -1,24 +1,27 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-// ✅ Verify logged-in user
-export const verifyToken = (req, res, next) => {
-  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
-  if (!token)
-    return res.status(401).json({ message: "Access denied. No token provided." });
-
+// Verify logged-in user
+export const verifyToken = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "Access denied. No token provided." });
 
-    // Attach full user info from JWT to req.user
-    req.user = decoded; // decoded should include id, role, department, isAdmin
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Fetch full user from DB
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    req.user = user; // attach full user
     next();
-  } catch (error) {
+  } catch (err) {
+    console.error("Token verification failed:", err);
     res.status(400).json({ message: "Invalid token." });
   }
 };
 
-// ✅ Verify admin only
+// Verify admin only
 export const verifyAdmin = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
@@ -26,12 +29,12 @@ export const verifyAdmin = async (req, res, next) => {
       return res.status(403).json({ message: "Access denied. Admins only." });
     }
     next();
-  } catch (error) {
+  } catch (err) {
     res.status(500).json({ message: "Server error during admin verification." });
   }
 };
 
-// ✅ Verify student only
+// Verify student only
 export const verifyStudent = (req, res, next) => {
   if (req.user.role !== "student") {
     return res.status(403).json({ message: "Access denied. Students only." });
@@ -39,7 +42,7 @@ export const verifyStudent = (req, res, next) => {
   next();
 };
 
-// ✅ Verify teacher only
+// Verify teacher only
 export const verifyTeacher = (req, res, next) => {
   if (req.user.role !== "teacher") {
     return res.status(403).json({ message: "Access denied. Teachers only." });

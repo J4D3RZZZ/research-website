@@ -1,16 +1,21 @@
 import Room from "../models/Room.js";
 import Booking from "../models/Booking.js";
 
-// Get all rooms with their bookings attached
 export const getRoomsWithBookings = async (req, res) => {
   try {
-    const userDepartment = req.user.department; // make sure you have this in your auth middleware
+    console.log("REQ USER:", req.user);
+    const userDept = req.user?.department; // from token
+    if (!userDept) return res.status(400).json({ message: "No department found in token" });
 
-    // Get only rooms in the user's department
-    const rooms = await Room.find({ department: req.user.department });
+    console.log("User department:", userDept);
 
+    // 🔥 Only get rooms that belong to user's department
+    const rooms = await Room.find({ department: userDept });
+
+    // Get all bookings
     const bookings = await Booking.find();
 
+    // Attach bookings to each room
     const roomsWithBookings = rooms.map((room) => {
       const roomBookings = bookings
         .filter((b) => b.roomId.toString() === room._id.toString())
@@ -25,6 +30,8 @@ export const getRoomsWithBookings = async (req, res) => {
         bookings: roomBookings,
       };
     });
+
+    console.log("Rooms with bookings:", roomsWithBookings);
 
     res.status(200).json(roomsWithBookings);
   } catch (err) {

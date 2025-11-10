@@ -1,6 +1,7 @@
 import express from "express";
 import Room from "../models/Room.js";
 import Booking from "../models/Booking.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -24,11 +25,11 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/book", async (req, res) => {
+router.post("/book", verifyToken, async (req, res) => {
   try {
-    const { roomId, startTime, endTime, section } = req.body;
+    const { roomId, startTime, endTime, section, teacher } = req.body;
     const teacherId = req.user._id;
-    const teacherName = req.user.username;
+    const teacherName = teacher || req.user.username;
 
     // Check for overlapping bookings
     const overlapping = await Booking.findOne({

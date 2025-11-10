@@ -27,12 +27,12 @@ export default function TeacherRooms({ user }) {
         });
 
         console.log("Rooms from backend:", res.data);
-        //setRooms(res.data);
-        res.data.forEach(r => console.log(r.name, r.department, r.bookings));
+        console.log("User dept:", `"${user.department}"`);
+        res.data.forEach(room => console.log("Room dept:", `"${room.department}"`));
 
-        // Filter rooms by teacher's department
+        // Filter rooms by teacher's department (case-insensitive trim)
         const deptRooms = res.data.filter(
-          (room) => room.department === user.department
+          room => room.department?.trim().toLowerCase() === user.department?.trim().toLowerCase()
         );
         console.log("Rooms with bookings:", deptRooms);
 
@@ -61,7 +61,7 @@ export default function TeacherRooms({ user }) {
 
     try {
       await axios.post(
-        "http://localhost:5000/api/rooms/book",
+        "http://localhost:5000/api/bookings/book",
         { ...formData, teacher: user.username },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -73,7 +73,7 @@ export default function TeacherRooms({ user }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const deptRooms = res.data.filter(
-        (room) => room.department === user.department
+        room => room.department?.trim().toLowerCase() === user.department?.trim().toLowerCase()
       );
       setRooms(deptRooms);
     } catch (err) {
@@ -100,9 +100,9 @@ export default function TeacherRooms({ user }) {
           required
         >
           <option value="">Select Room</option>
-          {rooms.map(r => (
-            <option key={r._id} value={r._id}>
-              {r.name} ({r.bookings?.length === 0 ? "Available" : "Booked"})
+          {rooms.map(room => (
+            <option key={room._id} value={room._id}>
+              {room.name} ({room.bookings?.length === 0 ? "Available" : "Booked"})
             </option>
           ))}
         </select>

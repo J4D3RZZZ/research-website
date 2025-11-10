@@ -18,16 +18,31 @@ export default function Login({ setUser }) {
 
       // Save token in localStorage
       localStorage.setItem("token", response.data.token);
-      setUser(response.data.user);
+
+      // Save user object in localStorage
+      const loggedInUser = {
+        _id: response.data.user.id,
+        username: response.data.user.username,
+        email: response.data.user.email,
+        role: response.data.user.role,
+        department: response.data.user.department,
+        isAdmin: response.data.user.isAdmin,
+        isApproved: response.data.user.isApproved,
+        isVerified: response.data.user.isVerified,
+      };
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
+
+      // Update App state
+      setUser(loggedInUser);
 
       alert("Login successful!");
 
       // Redirect based on role
-      if (response.data.user.role === "teacher") {
+      if (loggedInUser.role === "teacher") {
         navigate("/teacher");
-      } else if (response.data.user.role === "student") {
+      } else if (loggedInUser.role === "student") {
         navigate("/student");
-      } else if (response.data.user.isAdmin) {
+      } else if (loggedInUser.isAdmin) {
         navigate("/admin");
       }
     } catch (err) {
@@ -37,7 +52,16 @@ export default function Login({ setUser }) {
   };
 
   return (
-    <form onSubmit={handleLogin} style={{ maxWidth: 400, margin: "50px auto", display: "flex", flexDirection: "column", gap: "10px" }}>
+    <form
+      onSubmit={handleLogin}
+      style={{
+        maxWidth: 400,
+        margin: "50px auto",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+      }}
+    >
       <input
         type="text"
         placeholder="Username or Email"

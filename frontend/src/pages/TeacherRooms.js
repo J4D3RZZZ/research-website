@@ -13,39 +13,39 @@ export default function TeacherRooms({ user }) {
 
   // Fetch rooms for teacher's department
   useEffect(() => {
-  const fetchRooms = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("No token found in localStorage");
-      setLoading(false);
-      return;
-    }
+    const fetchRooms = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token found in localStorage");
+        setLoading(false);
+        return;
+      }
 
-    try {
-      const res = await axios.get("http://localhost:5000/api/rooms", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      try {
+        const res = await axios.get("http://localhost:5000/api/rooms", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      // ✅ Logging inside async function
-      console.log("Rooms from backend:", res.data);
-      res.data.forEach(r =>
-        console.log(r.name, r.department, r.bookings)
-      );
+        console.log("Rooms from backend:", res.data);
+        //setRooms(res.data);
+        res.data.forEach(r => console.log(r.name, r.department, r.bookings));
 
-      const deptRooms = res.data.filter(
-        (room) => room.department === user.department
-      );
-      setRooms(deptRooms);
-    } catch (err) {
-      console.error("Error fetching rooms:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Filter rooms by teacher's department
+        const deptRooms = res.data.filter(
+          (room) => room.department === user.department
+        );
+        console.log("Rooms with bookings:", deptRooms);
 
-  fetchRooms();
-}, [user.department]);
+        setRooms(deptRooms);
+      } catch (err) {
+        console.error("Error fetching rooms:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchRooms();
+  }, [user.department]);
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -65,6 +65,7 @@ export default function TeacherRooms({ user }) {
         { ...formData, teacher: user.username },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       alert("Room booked successfully!");
 
       // Refresh rooms after booking
@@ -99,9 +100,9 @@ export default function TeacherRooms({ user }) {
           required
         >
           <option value="">Select Room</option>
-          {rooms.map((r) => (
+          {rooms.map(r => (
             <option key={r._id} value={r._id}>
-              {r.name}
+              {r.name} ({r.bookings?.length === 0 ? "Available" : "Booked"})
             </option>
           ))}
         </select>
@@ -134,7 +135,7 @@ export default function TeacherRooms({ user }) {
       {rooms.length === 0 ? (
         <p>No rooms available for your department.</p>
       ) : (
-        rooms.map((room) => (
+        rooms.map(room => (
           <div
             key={room._id}
             style={{
@@ -146,7 +147,7 @@ export default function TeacherRooms({ user }) {
           >
             <strong>{room.name}</strong>
             <ul>
-              {room.bookings.length === 0 ? (
+              {(room.bookings ?? []).length === 0 ? (
                 <li>Available</li>
               ) : (
                 room.bookings.map((b, i) => (

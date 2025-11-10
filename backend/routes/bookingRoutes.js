@@ -1,13 +1,34 @@
 import express from "express";
-import Booking from "../models/Booking.js";
 import Room from "../models/Room.js";
+import Booking from "../models/Booking.js";
 
 const router = express.Router();
 
-// Create a booking
-router.post("/", async (req, res) => {
+// Get rooms with their bookings
+router.get("/", async (req, res) => {
   try {
-    const { roomId, teacherId, teacherName, startTime, endTime, section } = req.body;
+    const rooms = await Room.find();
+
+    // Attach bookings to each room
+    const roomsWithBookings = await Promise.all(
+      rooms.map(async (room) => {
+        const bookings = await Booking.find({ roomId: room._id });
+        return { ...room.toObject(), bookings };
+      })
+    );
+
+    res.status(200).json(roomsWithBookings);
+  } catch (err) {
+    console.error("Error fetching rooms:", err);
+    res.status(500).json({ message: "Error fetching rooms", error: err });
+  }
+});
+
+router.post("/book", async (req, res) => {
+  try {
+    const { roomId, startTime, endTime, section } = req.body;
+    const teacherId = req.user._id;
+    const teacherName = req.user.username;
 
     // Check for overlapping bookings
     const overlapping = await Booking.findOne({
@@ -15,12 +36,12 @@ router.post("/", async (req, res) => {
       $or: [
         { startTime: { $lt: new Date(endTime), $gte: new Date(startTime) } },
         { endTime: { $gt: new Date(startTime), $lte: new Date(endTime) } },
-        { startTime: { $lte: new Date(startTime) }, endTime: { $gte: new Date(endTime) } }
-      ]
+        { startTime: { $lte: new Date(startTime) }, endTime: { $gte: new Date(endTime) } },
+      ],
     });
 
     if (overlapping) {
-      return res.status(400).json({ message: "Room is already booked for the selected time." });
+      return res.status(400).json({ message: "Room is already booked for this time." });
     }
 
     const booking = new Booking({ roomId, teacherId, teacherName, startTime, endTime, section });
@@ -28,20 +49,8 @@ router.post("/", async (req, res) => {
 
     res.status(201).json({ message: "Room booked successfully!", booking });
   } catch (err) {
-    console.error("Booking error:", err);
-    res.status(500).json({ message: "Error booking room", error: err });
-  }
-});
-
-// Get all bookings (for rooms page)
-router.get("/", async (req, res) => {
-  try {
-    // Populate room info if needed
-    const bookings = await Booking.find().populate("roomId", "name");
-    res.status(200).json(bookings);
-  } catch (err) {
-    console.error("Error fetching bookings:", err);
-    res.status(500).json({ message: "Error fetching bookings", error: err });
+    console.error(err);
+    res.status(500).json({ message: "Booking failed", error: err });
   }
 });
 

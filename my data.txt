@@ -1,0 +1,5 @@
+MONGO DB:
+username - ryciemieljade890_db_user
+password - Tfn5nlutHdvQT9Xc
+
+mongodb+srv://ryciemieljade890_db_user:Tfn5nlutHdvQT9Xc@cluster0.t47zxyx.mongodb.net/?appName=Cluster0

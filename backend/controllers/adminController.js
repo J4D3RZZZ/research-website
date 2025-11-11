@@ -1,9 +1,8 @@
-// controllers/AdminController.js
 import User from "../models/User.js";
 import Room from "../models/Room.js";
-import { sendEmail } from "../utils/sendEmail.js"; // import the email utility
+import { sendEmail } from "../utils/sendEmail.js";
 
-// ✅ Get all users
+// GET all users
 export const getUsers = async (req, res) => {
   try {
     const users = await User.find();
@@ -13,7 +12,7 @@ export const getUsers = async (req, res) => {
   }
 };
 
-// ✅ Approve user
+// Approve user
 export const approveUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -22,25 +21,20 @@ export const approveUser = async (req, res) => {
     user.isApproved = "accepted";
     await user.save();
 
-    // Send email notification
-    try {
-      await sendEmail(
-        user.email,
-        "CVMS Account Approved",
-        `<p>Hi ${user.username}, your CVMS account has been approved. You can now log in.</p>`
-      );
-      console.log(`Approval email sent to ${user.email}`);
-    } catch (err) {
-      console.error("Error sending approval email:", err);
-    }
+    // Send approval email
+    await sendEmail(
+      user.email,
+      "Account Approved",
+      `<p>Hi ${user.username}, your account has been approved by the admin.</p>`
+    );
 
-    res.status(200).json({ message: `User ${user.username} approved successfully!` });
+    res.json({ message: `User ${user.username} approved successfully!` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// ✅ Reject user
+// Reject user
 export const rejectUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -49,25 +43,20 @@ export const rejectUser = async (req, res) => {
     user.isApproved = "rejected";
     await user.save();
 
-    // Send email notification
-    try {
-      await sendEmail(
-        user.email,
-        "CVMS Account Rejected",
-        `<p>Hi ${user.username}, your CVMS account has been rejected. Please contact admin for details.</p>`
-      );
-      console.log(`Rejection email sent to ${user.email}`);
-    } catch (err) {
-      console.error("Error sending rejection email:", err);
-    }
+    // Send rejection email
+    await sendEmail(
+      user.email,
+      "Account Rejected",
+      `<p>Hi ${user.username}, your account has been rejected by the admin.</p>`
+    );
 
-    res.json({ message: `${user.username} has been rejected.` });
+    res.json({ message: `User ${user.username} rejected.` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// ✅ Archive user
+// Archive user
 export const archiveUser = async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, { isApproved: "archived" });
@@ -79,7 +68,22 @@ export const archiveUser = async (req, res) => {
   }
 };
 
-// ✅ Get all rooms
+// Toggle admin
+export const toggleAdmin = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.isAdmin = !user.isAdmin;
+    await user.save();
+
+    res.json({ message: `${user.username} admin status is now ${user.isAdmin}`, isAdmin: user.isAdmin });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET all rooms
 export const getRooms = async (req, res) => {
   try {
     const rooms = await Room.find();
@@ -89,7 +93,7 @@ export const getRooms = async (req, res) => {
   }
 };
 
-// ✅ Create a room
+// Create room
 export const createRoom = async (req, res) => {
   try {
     const { name, location, department, images, usage, capacity } = req.body;

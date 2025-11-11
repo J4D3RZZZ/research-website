@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -25,7 +26,6 @@ function App() {
   const [user, setUser] = useState(null);
   const location = useLocation();
 
-  // Load user and token from localStorage
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
@@ -43,7 +43,6 @@ function App() {
     window.location.href = "/login";
   };
 
-  // Only show logout on protected pages (student/teacher dashboards)
   const showLogout =
     user &&
     ["/student", "/teacher", "/admin"].some((path) => location.pathname.startsWith(path));
@@ -71,7 +70,7 @@ function App() {
       )}
 
       <Routes>
-        {/* 🧍 PUBLIC ROUTES */}
+        {/* PUBLIC ROUTES */}
         <Route
           path="/login"
           element={
@@ -80,27 +79,16 @@ function App() {
             </PublicRoute>
           }
         />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute user={user}>
-              <Register />
-            </PublicRoute>
-          }
-        />
+        <Route path="/register" element={<PublicRoute user={user}><Register /></PublicRoute>} />
         <Route path="/confirm/:userId" element={<ConfirmCode />} />
         <Route path="/" element={<Landing />} />
 
-        {/* 🔒 PROTECTED ROUTES */}
+        {/* PROTECTED ROUTES */}
         <Route
           path="/student"
           element={
             <ProtectedRoute user={user}>
-              {user?.role === "student" ? (
-                <StudentRooms user={user} />
-              ) : (
-                <Navigate to="/unauthorized" replace />
-              )}
+              {user?.role === "student" ? <StudentRooms user={user} /> : <Navigate to="/unauthorized" replace />}
             </ProtectedRoute>
           }
         />
@@ -108,28 +96,20 @@ function App() {
           path="/teacher"
           element={
             <ProtectedRoute user={user}>
-              {user?.role === "teacher" ? (
-                <TeacherRooms user={user} />
-              ) : (
-                <Navigate to="/unauthorized" replace />
-              )}
+              {user?.role === "teacher" ? <TeacherRooms user={user} /> : <Navigate to="/unauthorized" replace />}
             </ProtectedRoute>
           }
         />
         <Route
-  path="/admin"
-  element={
-    <ProtectedRoute user={user}>
-      {user?.isAdmin ? (
-        <AdminDashboard user={user} />
-      ) : (
-        <Navigate to="/unauthorized" replace />
-      )}
-    </ProtectedRoute>
-  }
-/>
+          path="/admin"
+          element={
+            <ProtectedRoute user={user}>
+              {user?.isAdmin ? <AdminDashboard user={user} /> : <Navigate to="/unauthorized" replace />}
+            </ProtectedRoute>
+          }
+        />
 
-        {/* ⚠️ UNAUTHORIZED */}
+        {/* UNAUTHORIZED */}
         <Route path="/unauthorized" element={<Unauthorized />} />
       </Routes>
     </>

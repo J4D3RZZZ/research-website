@@ -1,3 +1,4 @@
+// src/pages/Login.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -16,20 +17,20 @@ export default function Login({ setUser }) {
         password,
       });
 
-      // Save token in localStorage
-      localStorage.setItem("token", response.data.token);
-
-      // Save user object in localStorage
+      // Convert isAdmin to boolean
       const loggedInUser = {
         _id: response.data.user.id,
         username: response.data.user.username,
         email: response.data.user.email,
         role: response.data.user.role,
         department: response.data.user.department,
-        isAdmin: response.data.user.isAdmin,
+        isAdmin: !!response.data.user.isAdmin,
         isApproved: response.data.user.isApproved,
         isVerified: response.data.user.isVerified,
       };
+
+      // Save in localStorage
+      localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(loggedInUser));
 
       // Update App state
@@ -37,14 +38,10 @@ export default function Login({ setUser }) {
 
       alert("Login successful!");
 
-      // Redirect based on role
-      if (loggedInUser.role === "teacher") {
-        navigate("/teacher");
-      } else if (loggedInUser.role === "student") {
-        navigate("/student");
-      } else if (loggedInUser.isAdmin) {
-        navigate("/admin");
-      }
+      // Redirect based on role or admin
+      if (loggedInUser.isAdmin) navigate("/admin");
+      else if (loggedInUser.role === "teacher") navigate("/teacher");
+      else if (loggedInUser.role === "student") navigate("/student");
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Login failed!");

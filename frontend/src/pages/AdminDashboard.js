@@ -7,7 +7,6 @@ export default function AdminDashboard({ user }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch users
   const fetchUsers = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/admin/users");
@@ -17,15 +16,12 @@ export default function AdminDashboard({ user }) {
     }
   };
 
-  // Fetch rooms and filter active bookings
   const fetchRooms = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/rooms");
       const now = new Date();
       const updatedRooms = res.data.map((room) => {
-        const activeBookings = (room.bookings ?? []).filter(
-          (b) => new Date(b.endTime) > now
-        );
+        const activeBookings = (room.bookings ?? []).filter((b) => new Date(b.endTime) > now);
         return { ...room, bookings: activeBookings };
       });
       setRooms(updatedRooms);
@@ -34,7 +30,6 @@ export default function AdminDashboard({ user }) {
     }
   };
 
-  // Initial fetch + auto-refresh every 10 seconds
   useEffect(() => {
     setLoading(true);
     fetchUsers();
@@ -51,10 +46,13 @@ export default function AdminDashboard({ user }) {
 
   const handleUserAction = async (userId, action) => {
     try {
-      const res = await axios.put(
-        `http://localhost:5000/api/admin/users/${userId}`,
-        { action }
-      );
+      let url;
+      if (action === "accept") url = `http://localhost:5000/api/admin/approve/${userId}`;
+      else if (action === "reject") url = `http://localhost:5000/api/admin/reject/${userId}`;
+      else if (action === "archive") url = `http://localhost:5000/api/admin/archive/${userId}`;
+      else if (action === "toggle-admin") url = `http://localhost:5000/api/admin/toggle-admin/${userId}`;
+
+      const res = await axios.put(url);
       alert(res.data.message);
       fetchUsers();
     } catch (err) {
@@ -69,14 +67,8 @@ export default function AdminDashboard({ user }) {
     <div style={{ maxWidth: 1000, margin: "50px auto" }}>
       <h2>Admin Dashboard</h2>
 
-      {/* USERS TABLE */}
       <h3>Users</h3>
-      <table
-        border="1"
-        cellPadding="6"
-        cellSpacing="0"
-        style={{ width: "100%", marginBottom: "30px" }}
-      >
+      <table border="1" cellPadding="6" cellSpacing="0" style={{ width: "100%", marginBottom: "30px" }}>
         <thead>
           <tr>
             <th>Username</th>
@@ -97,37 +89,26 @@ export default function AdminDashboard({ user }) {
               <td>{u.isApproved}</td>
               <td>
                 {u.isApproved !== "accepted" && (
-                  <button onClick={() => handleUserAction(u._id, "accept")}>
-                    Accept
-                  </button>
+                  <button onClick={() => handleUserAction(u._id, "accept")}>Accept</button>
                 )}
                 {u.isApproved !== "rejected" && (
-                  <button onClick={() => handleUserAction(u._id, "reject")}>
-                    Reject
-                  </button>
+                  <button onClick={() => handleUserAction(u._id, "reject")}>Reject</button>
                 )}
                 {u.isApproved !== "archived" && (
-                  <button onClick={() => handleUserAction(u._id, "archive")}>
-                    Archive
-                  </button>
+                  <button onClick={() => handleUserAction(u._id, "archive")}>Archive</button>
                 )}
+                <button onClick={() => handleUserAction(u._id, "toggle-admin")}>Toggle Admin</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {/* ROOMS AND BOOKINGS */}
       <h3>Room Bookings</h3>
       {rooms.map((room) => (
         <div
           key={room._id}
-          style={{
-            border: "1px solid #ccc",
-            padding: "10px",
-            marginBottom: "10px",
-            borderRadius: "6px",
-          }}
+          style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px", borderRadius: "6px" }}
         >
           <strong>{room.name}</strong> ({room.department})
           <ul>
@@ -135,16 +116,8 @@ export default function AdminDashboard({ user }) {
             {(room.bookings ?? []).map((b, i) => (
               <li key={i}>
                 Prof. {b.teacherName} |{" "}
-                {new Date(b.startTime).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
-                -{" "}
-                {new Date(b.endTime).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
-                | Section: {b.section}
+                {new Date(b.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -{" "}
+                {new Date(b.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} | Section: {b.section}
               </li>
             ))}
           </ul>

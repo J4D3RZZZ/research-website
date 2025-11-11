@@ -52,35 +52,48 @@ export default function TeacherRooms({ user }) {
 
   // Booking function
   const handleBook = async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("No token found in localStorage");
-      return;
-    }
+  e.preventDefault();
+  const token = localStorage.getItem("token");
+  if (!token) {
+    console.error("No token found in localStorage");
+    return;
+  }
 
-    try {
-      await axios.post(
-        "http://localhost:5000/api/bookings/book",
-        { ...formData, teacher: user.username },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+  try {
+    // Construct ISO timestamps for start and end time
+    const today = new Date().toISOString().split("T")[0]; // e.g. "2025-11-11"
+    const startTime = new Date(`${today}T${formData.startTime}:00`).toISOString();
+    const endTime = new Date(`${today}T${formData.endTime}:00`).toISOString();
 
-      alert("Room booked successfully!");
+    await axios.post(
+      "http://localhost:5000/api/bookings/book",
+      {
+        roomId: formData.roomId,
+        section: formData.section,
+        startTime,
+        endTime,
+        teacherName: user.username,
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-      // Refresh rooms after booking
-      const res = await axios.get("http://localhost:5000/api/rooms", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const deptRooms = res.data.filter(
-        room => room.department?.trim().toLowerCase() === user.department?.trim().toLowerCase()
-      );
-      setRooms(deptRooms);
-    } catch (err) {
-      console.error("Booking failed:", err);
-      alert(err.response?.data?.message || "Booking failed!");
-    }
-  };
+    alert("Room booked successfully!");
+
+    // Refresh room list
+    const res = await axios.get("http://localhost:5000/api/rooms", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const deptRooms = res.data.filter(
+      room =>
+        room.department?.trim().toLowerCase() ===
+        user.department?.trim().toLowerCase()
+    );
+    setRooms(deptRooms);
+  } catch (err) {
+    console.error("Booking failed:", err);
+    alert(err.response?.data?.message || "Booking failed!");
+  }
+};
 
   if (loading) return <div>Loading rooms...</div>;
 

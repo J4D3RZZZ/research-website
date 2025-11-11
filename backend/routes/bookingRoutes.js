@@ -27,9 +27,14 @@ router.get("/", async (req, res) => {
 
 router.post("/book", verifyToken, async (req, res) => {
   try {
-    const { roomId, startTime, endTime, section, teacher } = req.body;
-    const teacherId = req.user._id;
-    const teacherName = teacher || req.user.username;
+    const { roomId, teacherName, startTime, endTime, section } = req.body;
+
+    // teacher fallback using token
+    const teacher = teacherName || req.user.username;
+    const teacherId = req.user._id; // ✅ define teacherId here
+
+    console.log("Booking request received:", req.body);
+    console.log("Teacher ID:", teacherId);
 
     // Check for overlapping bookings
     const overlapping = await Booking.findOne({
@@ -42,16 +47,25 @@ router.post("/book", verifyToken, async (req, res) => {
     });
 
     if (overlapping) {
-      return res.status(400).json({ message: "Room is already booked for this time." });
+      return res.status(400).json({ message: "Room is already booked for the selected time." });
     }
 
-    const booking = new Booking({ roomId, teacherId, teacherName, startTime, endTime, section });
+    // ✅ Create the booking properly
+    const booking = new Booking({
+      roomId,
+      teacherId, // ✅ add this safely
+      teacherName: teacher,
+      startTime,
+      endTime,
+      section,
+    });
+
     await booking.save();
 
     res.status(201).json({ message: "Room booked successfully!", booking });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Booking failed", error: err });
+    console.error("Booking error:", err);
+    res.status(500).json({ message: "Error booking room", error: err.message });
   }
 });
 

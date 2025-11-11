@@ -11,89 +11,90 @@ export default function TeacherRooms({ user }) {
     section: "",
   });
 
-  // Fetch rooms for teacher's department
-  useEffect(() => {
-    const fetchRooms = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        console.error("No token found in localStorage");
-        setLoading(false);
-        return;
-      }
+  // Function to fetch rooms from backend
+  const fetchRooms = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return console.error("No token found in localStorage");
 
-      try {
-        const res = await axios.get("http://localhost:5000/api/rooms", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+    try {
+      const res = await axios.get("http://localhost:5000/api/rooms", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        console.log("Rooms from backend:", res.data);
-        console.log("User dept:", `"${user.department}"`);
-        res.data.forEach(room => console.log("Room dept:", `"${room.department}"`));
-
-        // Filter rooms by teacher's department (case-insensitive trim)
-        const deptRooms = res.data.filter(
-          room => room.department?.trim().toLowerCase() === user.department?.trim().toLowerCase()
+      // Filter out expired bookings
+      const now = new Date();
+      const deptRooms = res.data
+        .map(room => {
+          const activeBookings = (room.bookings ?? []).filter(
+            b => new Date(b.endTime) > now
+          );
+          return { ...room, bookings: activeBookings };
+        })
+        .filter(
+          room =>
+            room.department?.trim().toLowerCase() ===
+            user.department?.trim().toLowerCase()
         );
-        console.log("Rooms with bookings:", deptRooms);
 
-        setRooms(deptRooms);
-      } catch (err) {
-        console.error("Error fetching rooms:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setRooms(deptRooms);
+    } catch (err) {
+      console.error("Error fetching rooms:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchRooms();
+  // Initial fetch + auto-refresh every 10 seconds
+  useEffect(() => {
+    fetchRooms(); // initial fetch
+
+    const interval = setInterval(() => {
+      fetchRooms();
+    }, 10000); // refresh every 10 seconds
+
+    return () => clearInterval(interval); // cleanup on unmount
   }, [user.department]);
 
-  const handleChange = (e) =>
+  const handleChange = e =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
   // Booking function
-  const handleBook = async (e) => {
-  e.preventDefault();
-  const token = localStorage.getItem("token");
-  if (!token) {
-    console.error("No token found in localStorage");
-    return;
-  }
+  const handleBook = async e => {
+    e.preventDefault();
+    const token = localStorage.getItem("token");
+    if (!token) return console.error("No token found in localStorage");
 
-  try {
-    // Construct ISO timestamps for start and end time
-    const today = new Date().toISOString().split("T")[0]; // e.g. "2025-11-11"
-    const startTime = new Date(`${today}T${formData.startTime}:00`).toISOString();
-    const endTime = new Date(`${today}T${formData.endTime}:00`).toISOString();
+    try {
+      const today = new Date();
+      const [startHour, startMin] = formData.startTime.split(":");
+      const [endHour, endMin] = formData.endTime.split(":");
 
-    await axios.post(
-      "http://localhost:5000/api/bookings/book",
-      {
-        roomId: formData.roomId,
-        section: formData.section,
-        startTime,
-        endTime,
-        teacherName: user.username,
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+      const startTime = new Date(today);
+      startTime.setHours(parseInt(startHour, 10), parseInt(startMin, 10), 0, 0);
 
-    alert("Room booked successfully!");
+      const endTime = new Date(today);
+      endTime.setHours(parseInt(endHour, 10), parseInt(endMin, 10), 0, 0);
 
-    // Refresh room list
-    const res = await axios.get("http://localhost:5000/api/rooms", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const deptRooms = res.data.filter(
-      room =>
-        room.department?.trim().toLowerCase() ===
-        user.department?.trim().toLowerCase()
-    );
-    setRooms(deptRooms);
-  } catch (err) {
-    console.error("Booking failed:", err);
-    alert(err.response?.data?.message || "Booking failed!");
-  }
-};
+      await axios.post(
+        "http://localhost:5000/api/bookings/book",
+        {
+          roomId: formData.roomId,
+          startTime,
+          endTime,
+          section: formData.section,
+          teacherName: user.username,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert("Room booked successfully!");
+      setFormData({ roomId: "", startTime: "", endTime: "", section: "" });
+      fetchRooms(); // refresh immediately after booking
+    } catch (err) {
+      console.error("Booking failed:", err);
+      alert(err.response?.data?.message || "Booking failed!");
+    }
+  };
 
   if (loading) return <div>Loading rooms...</div>;
 
@@ -119,6 +120,7 @@ export default function TeacherRooms({ user }) {
             </option>
           ))}
         </select>
+
         <input
           type="text"
           name="section"
@@ -165,9 +167,17 @@ export default function TeacherRooms({ user }) {
               ) : (
                 room.bookings.map((b, i) => (
                   <li key={i}>
-                    Occupied by Prof. {b.teacher} |{" "}
-                    {new Date(b.startTime).toLocaleTimeString()} -{" "}
-                    {new Date(b.endTime).toLocaleTimeString()} | {b.section}
+                    Occupied by Prof. {b.teacherName} |{" "}
+                    {new Date(b.startTime).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    -{" "}
+                    {new Date(b.endTime).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    | {b.section}
                   </li>
                 ))
               )}

@@ -7,23 +7,46 @@ export default function AdminDashboard({ user }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch users and rooms
+  // Fetch users
+  const fetchUsers = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/admin/users");
+      setUsers(res.data);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    }
+  };
+
+  // Fetch rooms and filter active bookings
+  const fetchRooms = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/rooms");
+      const now = new Date();
+      const updatedRooms = res.data.map((room) => {
+        const activeBookings = (room.bookings ?? []).filter(
+          (b) => new Date(b.endTime) > now
+        );
+        return { ...room, bookings: activeBookings };
+      });
+      setRooms(updatedRooms);
+    } catch (err) {
+      console.error("Error fetching rooms:", err);
+    }
+  };
+
+  // Initial fetch + auto-refresh every 10 seconds
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [usersRes, roomsRes] = await Promise.all([
-          axios.get("http://localhost:5000/api/admin/users"),
-          axios.get("http://localhost:5000/api/rooms"),
-        ]);
-        setUsers(usersRes.data);
-        setRooms(roomsRes.data);
-      } catch (err) {
-        console.error("Error fetching admin data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    setLoading(true);
+    fetchUsers();
+    fetchRooms();
+    setLoading(false);
+
+    const interval = setInterval(() => {
+      fetchUsers();
+      fetchRooms();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleUserAction = async (userId, action) => {
@@ -33,10 +56,7 @@ export default function AdminDashboard({ user }) {
         { action }
       );
       alert(res.data.message);
-
-      // Refresh users
-      const updatedUsers = await axios.get("http://localhost:5000/api/admin/users");
-      setUsers(updatedUsers.data);
+      fetchUsers();
     } catch (err) {
       console.error("Error updating user:", err.response?.data || err.message);
       alert(err.response?.data?.message || "Error updating user");
@@ -46,11 +66,17 @@ export default function AdminDashboard({ user }) {
   if (loading) return <div>Loading admin dashboard...</div>;
 
   return (
-    <div style={{ maxWidth: 800, margin: "50px auto" }}>
+    <div style={{ maxWidth: 1000, margin: "50px auto" }}>
       <h2>Admin Dashboard</h2>
 
+      {/* USERS TABLE */}
       <h3>Users</h3>
-      <table border="1" cellPadding="6" cellSpacing="0" style={{ width: "100%", marginBottom: "30px" }}>
+      <table
+        border="1"
+        cellPadding="6"
+        cellSpacing="0"
+        style={{ width: "100%", marginBottom: "30px" }}
+      >
         <thead>
           <tr>
             <th>Username</th>
@@ -71,13 +97,19 @@ export default function AdminDashboard({ user }) {
               <td>{u.isApproved}</td>
               <td>
                 {u.isApproved !== "accepted" && (
-                  <button onClick={() => handleUserAction(u._id, "accept")}>Accept</button>
+                  <button onClick={() => handleUserAction(u._id, "accept")}>
+                    Accept
+                  </button>
                 )}
                 {u.isApproved !== "rejected" && (
-                  <button onClick={() => handleUserAction(u._id, "reject")}>Reject</button>
+                  <button onClick={() => handleUserAction(u._id, "reject")}>
+                    Reject
+                  </button>
                 )}
                 {u.isApproved !== "archived" && (
-                  <button onClick={() => handleUserAction(u._id, "archive")}>Archive</button>
+                  <button onClick={() => handleUserAction(u._id, "archive")}>
+                    Archive
+                  </button>
                 )}
               </td>
             </tr>
@@ -85,15 +117,34 @@ export default function AdminDashboard({ user }) {
         </tbody>
       </table>
 
+      {/* ROOMS AND BOOKINGS */}
       <h3>Room Bookings</h3>
       {rooms.map((room) => (
-        <div key={room._id} style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px", borderRadius: "6px" }}>
-          <strong>{room.name}</strong>
+        <div
+          key={room._id}
+          style={{
+            border: "1px solid #ccc",
+            padding: "10px",
+            marginBottom: "10px",
+            borderRadius: "6px",
+          }}
+        >
+          <strong>{room.name}</strong> ({room.department})
           <ul>
-            {room.bookings.length === 0 && <li>No bookings</li>}
-            {room.bookings.map((b, i) => (
+            {(room.bookings ?? []).length === 0 && <li>No active bookings</li>}
+            {(room.bookings ?? []).map((b, i) => (
               <li key={i}>
-                Prof. {b.teacher} | {b.startTime} - {b.endTime} | {b.section}
+                Prof. {b.teacherName} |{" "}
+                {new Date(b.startTime).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                -{" "}
+                {new Date(b.endTime).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                | Section: {b.section}
               </li>
             ))}
           </ul>

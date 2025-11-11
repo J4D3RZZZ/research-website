@@ -1,18 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 import StudentRooms from "./pages/StudentRooms";
 import TeacherRooms from "./pages/TeacherRooms";
+import AdminDashboard from "./pages/AdminDashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ConfirmCode from "./pages/ConfirmCode";
 import Unauthorized from "./pages/Unauthorized";
 import Landing from "./pages/Landing";
+import ProtectedRoute from "./components/ProtectedRoute";
+import PublicRoute from "./components/PublicRoute";
+
+function AppWrapper() {
+  return (
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  );
+}
 
 function App() {
   const [user, setUser] = useState(null);
+  const location = useLocation();
 
+  // Load user and token from localStorage
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
@@ -27,12 +40,17 @@ function App() {
     localStorage.removeItem("user");
     delete axios.defaults.headers.common["Authorization"];
     setUser(null);
-    window.location.href = "/login"; // redirect to login
+    window.location.href = "/login";
   };
 
+  // Only show logout on protected pages (student/teacher dashboards)
+  const showLogout =
+    user &&
+    ["/student", "/teacher", "/admin"].some((path) => location.pathname.startsWith(path));
+
   return (
-    <BrowserRouter>
-      {user && (
+    <>
+      {showLogout && (
         <button
           onClick={handleLogout}
           style={{
@@ -45,6 +63,7 @@ function App() {
             borderRadius: "6px",
             color: "#fff",
             cursor: "pointer",
+            zIndex: 999,
           }}
         >
           Logout
@@ -52,34 +71,69 @@ function App() {
       )}
 
       <Routes>
+        {/* 🧍 PUBLIC ROUTES */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute user={user}>
+              <Login setUser={setUser} />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute user={user}>
+              <Register />
+            </PublicRoute>
+          }
+        />
+        <Route path="/confirm/:userId" element={<ConfirmCode />} />
+        <Route path="/" element={<Landing />} />
+
+        {/* 🔒 PROTECTED ROUTES */}
         <Route
           path="/student"
           element={
-            user?.role === "student" ? (
-              <StudentRooms user={user} />
-            ) : (
-              <Navigate to="/unauthorized" replace />
-            )
+            <ProtectedRoute user={user}>
+              {user?.role === "student" ? (
+                <StudentRooms user={user} />
+              ) : (
+                <Navigate to="/unauthorized" replace />
+              )}
+            </ProtectedRoute>
           }
         />
         <Route
           path="/teacher"
           element={
-            user?.role === "teacher" ? (
-              <TeacherRooms user={user} />
-            ) : (
-              <Navigate to="/unauthorized" replace />
-            )
+            <ProtectedRoute user={user}>
+              {user?.role === "teacher" ? (
+                <TeacherRooms user={user} />
+              ) : (
+                <Navigate to="/unauthorized" replace />
+              )}
+            </ProtectedRoute>
           }
         />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route path="/confirm/:userId" element={<ConfirmCode />} />
+        <Route
+  path="/admin"
+  element={
+    <ProtectedRoute user={user}>
+      {user?.isAdmin ? (
+        <AdminDashboard user={user} />
+      ) : (
+        <Navigate to="/unauthorized" replace />
+      )}
+    </ProtectedRoute>
+  }
+/>
+
+        {/* ⚠️ UNAUTHORIZED */}
         <Route path="/unauthorized" element={<Unauthorized />} />
-        <Route path="/" element={<Landing />} />
       </Routes>
-    </BrowserRouter>
+    </>
   );
 }
 
-export default App;
+export default AppWrapper;

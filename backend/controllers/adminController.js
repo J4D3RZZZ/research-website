@@ -1,5 +1,7 @@
+// controllers/AdminController.js
 import User from "../models/User.js";
 import Room from "../models/Room.js";
+import { sendEmail } from "../utils/sendEmail.js"; // import the email utility
 
 // ✅ Get all users
 export const getUsers = async (req, res) => {
@@ -19,6 +21,19 @@ export const approveUser = async (req, res) => {
 
     user.isApproved = "accepted";
     await user.save();
+
+    // Send email notification
+    try {
+      await sendEmail(
+        user.email,
+        "CVMS Account Approved",
+        `<p>Hi ${user.username}, your CVMS account has been approved. You can now log in.</p>`
+      );
+      console.log(`Approval email sent to ${user.email}`);
+    } catch (err) {
+      console.error("Error sending approval email:", err);
+    }
+
     res.status(200).json({ message: `User ${user.username} approved successfully!` });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -33,6 +48,19 @@ export const rejectUser = async (req, res) => {
 
     user.isApproved = "rejected";
     await user.save();
+
+    // Send email notification
+    try {
+      await sendEmail(
+        user.email,
+        "CVMS Account Rejected",
+        `<p>Hi ${user.username}, your CVMS account has been rejected. Please contact admin for details.</p>`
+      );
+      console.log(`Rejection email sent to ${user.email}`);
+    } catch (err) {
+      console.error("Error sending rejection email:", err);
+    }
+
     res.json({ message: `${user.username} has been rejected.` });
   } catch (err) {
     res.status(500).json({ error: err.message });

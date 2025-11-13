@@ -11,7 +11,7 @@ export default function StudentRooms({ user }) {
     if (!token) return console.error("No token found in localStorage");
 
     try {
-      const res = await axios.get("http://localhost:5000/api/rooms", {
+      const res = await axios.get("https://j4d3rzzz-github-io-1.onrender.com/api/rooms", {
         headers: { Authorization: `Bearer ${token}` },
       });
 

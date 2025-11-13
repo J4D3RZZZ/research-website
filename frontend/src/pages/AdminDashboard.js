@@ -13,7 +13,7 @@ export default function AdminDashboard({ user }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/users");
+      const res = await axios.get("https://j4d3rzzz-github-io-1.onrender.com/api/admin/users");
       const users = res.data;
       setPendingUsers(users.filter(u => u.isApproved === "pending"));
       setAdminUsers(users.filter(u => u.isAdmin));
@@ -24,7 +24,7 @@ export default function AdminDashboard({ user }) {
 
   const fetchRejectedUsers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/rejected-users");
+      const res = await axios.get("https://j4d3rzzz-github-io-1.onrender.com/api/admin/rejected-users");
       setRejectedUsers(res.data);
     } catch (err) {
       console.error("Error fetching rejected users:", err.response?.data || err.message);

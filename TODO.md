@@ -1,2 +1,0 @@
-- [x] Add "toggle-admin" case to handleUserAction in AdminDashboard.js
-- [x] Add "Toggle Admin" button in the users table actions

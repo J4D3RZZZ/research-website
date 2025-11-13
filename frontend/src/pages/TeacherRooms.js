@@ -167,7 +167,7 @@ export default function TeacherRooms({ user }) {
               ) : (
                 room.bookings.map((b, i) => (
                   <li key={i}>
-                    Occupied by Prof. {b.teacherName} |{" "}
+                    Occupied by Prof. {b.teacher} |{" "}
                     {new Date(b.startTime).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",

@@ -1,128 +1,160 @@
-// src/pages/AdminDashboard.js
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 export default function AdminDashboard({ user }) {
-  const [users, setUsers] = useState([]);
-  const [rooms, setRooms] = useState([]);
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [rejectedUsers, setRejectedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [currentRejectUser, setCurrentRejectUser] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const fetchUsers = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/admin/users");
-      setUsers(res.data);
+      const users = res.data;
+      setPendingUsers(users.filter(u => u.isApproved === "pending"));
+      setAdminUsers(users.filter(u => u.isAdmin));
     } catch (err) {
-      console.error("Error fetching users:", err);
+      console.error("Error fetching users:", err.response?.data || err.message);
     }
   };
 
-  const fetchRooms = async () => {
+  const fetchRejectedUsers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/rooms");
-      const now = new Date();
-      const updatedRooms = res.data.map((room) => {
-        const activeBookings = (room.bookings ?? []).filter((b) => new Date(b.endTime) > now);
-        return { ...room, bookings: activeBookings };
-      });
-      setRooms(updatedRooms);
+      const res = await axios.get("http://localhost:5000/api/admin/rejected-users");
+      setRejectedUsers(res.data);
     } catch (err) {
-      console.error("Error fetching rooms:", err);
+      console.error("Error fetching rejected users:", err.response?.data || err.message);
     }
   };
 
   useEffect(() => {
     setLoading(true);
     fetchUsers();
-    fetchRooms();
+    fetchRejectedUsers();
     setLoading(false);
 
     const interval = setInterval(() => {
       fetchUsers();
-      fetchRooms();
+      fetchRejectedUsers();
     }, 10000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const handleUserAction = async (userId, action) => {
+  const handleApprove = async (userId) => {
     try {
-      let url;
-      if (action === "accept") url = `http://localhost:5000/api/admin/approve/${userId}`;
-      else if (action === "reject") url = `http://localhost:5000/api/admin/reject/${userId}`;
-      else if (action === "archive") url = `http://localhost:5000/api/admin/archive/${userId}`;
-      else if (action === "toggle-admin") url = `http://localhost:5000/api/admin/toggle-admin/${userId}`;
-
-      const res = await axios.put(url);
+      const res = await axios.put(`http://localhost:5000/api/admin/approve/${userId}`);
       alert(res.data.message);
       fetchUsers();
     } catch (err) {
-      console.error("Error updating user:", err.response?.data || err.message);
-      alert(err.response?.data?.message || "Error updating user");
+      console.error(err);
+      alert(err.response?.data?.message || "Error approving user");
+    }
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!currentRejectUser || !rejectReason) return;
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/admin/reject/${currentRejectUser._id}`,
+        { reason: rejectReason }
+      );
+      alert(res.data.message);
+      setShowRejectModal(false);
+      setRejectReason("");
+      setCurrentRejectUser(null);
+      fetchUsers();
+      fetchRejectedUsers();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Error rejecting user");
     }
   };
 
   if (loading) return <div>Loading admin dashboard...</div>;
 
   return (
-    <div style={{ maxWidth: 1000, margin: "50px auto" }}>
-      <h2>Admin Dashboard</h2>
+    <div style={{ maxWidth: 1200, margin: "50px auto", display: "flex", gap: "20px" }}>
 
-      <h3>Users</h3>
-      <table border="1" cellPadding="6" cellSpacing="0" style={{ width: "100%", marginBottom: "30px" }}>
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Department</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u._id}>
-              <td>{u.username}</td>
-              <td>{u.email}</td>
-              <td>{u.role}</td>
-              <td>{u.department}</td>
-              <td>{u.isApproved}</td>
-              <td>
-                {u.isApproved !== "accepted" && (
-                  <button onClick={() => handleUserAction(u._id, "accept")}>Accept</button>
-                )}
-                {u.isApproved !== "rejected" && (
-                  <button onClick={() => handleUserAction(u._id, "reject")}>Reject</button>
-                )}
-                {u.isApproved !== "archived" && (
-                  <button onClick={() => handleUserAction(u._id, "archive")}>Archive</button>
-                )}
-                <button onClick={() => handleUserAction(u._id, "toggle-admin")}>Toggle Admin</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Pending Users Box */}
+      <div style={{ flex: 1, border: "1px solid #ccc", borderRadius: "6px", padding: "15px" }}>
+        <h3>Pending Users</h3>
+        {pendingUsers.length === 0 && <p>No pending users.</p>}
+        {pendingUsers.map(u => (
+          <div key={u._id} style={{ marginBottom: "10px", padding: "8px", borderBottom: "1px solid #eee" }}>
+            <strong>{u.username}</strong> | {u.email} | {u.role} | {u.department}
+            <div style={{ marginTop: "5px", display: "flex", gap: "5px" }}>
+              <button onClick={() => handleApprove(u._id)}>Accept</button>
+              <button
+                onClick={() => {
+                  setCurrentRejectUser(u);
+                  setShowRejectModal(true);
+                }}
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
 
-      <h3>Room Bookings</h3>
-      {rooms.map((room) => (
-        <div
-          key={room._id}
-          style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px", borderRadius: "6px" }}
-        >
-          <strong>{room.name}</strong> ({room.department})
-          <ul>
-            {(room.bookings ?? []).length === 0 && <li>No active bookings</li>}
-            {(room.bookings ?? []).map((b, i) => (
-              <li key={i}>
-                Prof. {b.teacherName} |{" "}
-                {new Date(b.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -{" "}
-                {new Date(b.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} | Section: {b.section}
-              </li>
-            ))}
-          </ul>
+      {/* Admin Users Box */}
+      <div style={{ flex: 1, border: "1px solid #ccc", borderRadius: "6px", padding: "15px" }}>
+        <h3>Admin Users</h3>
+        {adminUsers.length === 0 && <p>No admin users.</p>}
+        {adminUsers.map(u => (
+          <div key={u._id} style={{ marginBottom: "10px", padding: "8px", borderBottom: "1px solid #eee" }}>
+            <strong>{u.username}</strong> | {u.email} | {u.role} | {u.department}
+          </div>
+        ))}
+      </div>
+
+      {/* Rejected Users Box */}
+      <div style={{ flex: 1, border: "1px solid #ccc", borderRadius: "6px", padding: "15px" }}>
+        <h3>Rejected Users</h3>
+        {rejectedUsers.length === 0 && <p>No rejected users.</p>}
+        {rejectedUsers.map(u => (
+          <div key={u._id} style={{ marginBottom: "10px", padding: "8px", borderBottom: "1px solid #eee" }}>
+            <strong>{u.username}</strong> | {u.email} | {u.role} | {u.department}<br/>
+            <small>
+              Reason: {u.reason} | Rejected By: {u.rejectedBy} | Date: {new Date(u.date).toLocaleString()}
+            </small>
+          </div>
+        ))}
+      </div>
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000
+        }}>
+          <div style={{ background: "#fff", padding: "20px", borderRadius: "8px", width: 400 }}>
+            <h4>Reject {currentRejectUser.username}</h4>
+            <input
+              type="text"
+              placeholder="Enter rejection reason"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginBottom: "10px", borderRadius: "4px" }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button onClick={() => setShowRejectModal(false)}>Cancel</button>
+              <button onClick={handleRejectConfirm} disabled={!rejectReason}>Confirm Reject</button>
+            </div>
+          </div>
         </div>
-      ))}
+      )}
+
     </div>
   );
 }

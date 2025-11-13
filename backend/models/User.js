@@ -17,6 +17,14 @@ const UserSchema = new mongoose.Schema(
       enum: ["pending", "accepted", "rejected", "archived"],
       default: "pending",
     },
+    rejected: [
+    {
+      gmail: String,
+      reason: String,
+      rejectedBy: String,
+      date: Date,
+    },
+  ],
     verificationCode: { type: Number },
     codeExpiry: { type: Date },
     isVerified: { type: Boolean, default: false },

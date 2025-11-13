@@ -1,4 +1,4 @@
-// src/App.js
+// frontend/src/App.js
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -24,8 +24,10 @@ function AppWrapper() {
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true); // wait until user is loaded
   const location = useLocation();
 
+  // Load user from localStorage
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
@@ -33,6 +35,7 @@ function App() {
       setUser(JSON.parse(userData));
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     }
+    setLoadingUser(false); // finished loading user
   }, []);
 
   const handleLogout = () => {
@@ -45,7 +48,12 @@ function App() {
 
   const showLogout =
     user &&
-    ["/student", "/teacher", "/admin"].some((path) => location.pathname.startsWith(path));
+    ["/student", "/teacher", "/admin"].some((path) =>
+      location.pathname.startsWith(path)
+    );
+
+  // Wait until user is loaded before rendering routes
+  if (loadingUser) return <div>Loading...</div>;
 
   return (
     <>
@@ -88,7 +96,11 @@ function App() {
           path="/student"
           element={
             <ProtectedRoute user={user}>
-              {user?.role === "student" ? <StudentRooms user={user} /> : <Navigate to="/unauthorized" replace />}
+              {user?.role === "student" ? (
+                <StudentRooms user={user} />
+              ) : (
+                <Navigate to="/unauthorized" replace />
+              )}
             </ProtectedRoute>
           }
         />
@@ -96,7 +108,11 @@ function App() {
           path="/teacher"
           element={
             <ProtectedRoute user={user}>
-              {user?.role === "teacher" ? <TeacherRooms user={user} /> : <Navigate to="/unauthorized" replace />}
+              {user?.role === "teacher" ? (
+                <TeacherRooms user={user} />
+              ) : (
+                <Navigate to="/unauthorized" replace />
+              )}
             </ProtectedRoute>
           }
         />
@@ -104,7 +120,11 @@ function App() {
           path="/admin"
           element={
             <ProtectedRoute user={user}>
-              {user?.isAdmin ? <AdminDashboard user={user} /> : <Navigate to="/unauthorized" replace />}
+              {user?.isAdmin ? (
+                <AdminDashboard user={user} />
+              ) : (
+                <Navigate to="/unauthorized" replace />
+              )}
             </ProtectedRoute>
           }
         />

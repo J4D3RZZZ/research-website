@@ -14,7 +14,6 @@ const RoomSchema = new mongoose.Schema(
     department: { type: String, enum: ["CEAT", "CM", "BINDTECH", "COED"], required: true },
     images: [{ type: String }], // store image URLs
     usage: { type: String, required: true }, // e.g., "Lecture", "Lab", "Meeting"
-    capacity: { type: Number, default: 30 }, // optional
   },
   { timestamps: true }
 );
